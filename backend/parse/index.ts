@@ -4,7 +4,11 @@ import { DynamoDBDocumentClient, PutCommand, BatchWriteCommand } from '@aws-sdk/
 import { v4 as uuidv4 } from 'uuid';
 
 const dynamoClient = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const docClient = DynamoDBDocumentClient.from(dynamoClient, {
+  marshallOptions: {
+    removeUndefinedValues: true,
+  },
+});
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE!;
 

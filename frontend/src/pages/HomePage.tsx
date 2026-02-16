@@ -14,16 +14,22 @@ export default function HomePage() {
 
     setLoading(true);
     try {
-      const response = await apiClient.post(API_ENDPOINTS.PARSE, { text });
-      const { sessionId } = response.data;
+      const parseResponse = await apiClient.post(API_ENDPOINTS.PARSE, { text });
+      const { sessionId, sources } = parseResponse.data;
 
       // Validate sources
-      await apiClient.post(API_ENDPOINTS.VALIDATE, {
+      const validateResponse = await apiClient.post(API_ENDPOINTS.VALIDATE, {
         sessionId,
-        sources: response.data.sources,
+        sources,
       });
 
-      navigate(`/results/${sessionId}`);
+      // Navigate with results in state
+      navigate(`/results/${sessionId}`, {
+        state: {
+          sources,
+          results: validateResponse.data.results,
+        },
+      });
     } catch (error) {
       console.error('Error:', error);
       alert('Error processing sources');

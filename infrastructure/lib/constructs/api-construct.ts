@@ -41,7 +41,7 @@ export class ApiConstruct extends Construct {
     const parseFunction = new lambda.Function(this, 'ParseFunction', {
       functionName: `source-validator-parse-${props.environment}`,
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
+      handler: 'dist/index.handler',
       code: lambda.Code.fromAsset('../backend/parse'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -59,7 +59,7 @@ export class ApiConstruct extends Construct {
     const validateFunction = new lambda.Function(this, 'ValidateFunction', {
       functionName: `source-validator-validate-${props.environment}`,
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
+      handler: 'dist/index.handler',
       code: lambda.Code.fromAsset('../backend/validate'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -89,7 +89,7 @@ export class ApiConstruct extends Construct {
     const generateReportFunction = new lambda.Function(this, 'GenerateReportFunction', {
       functionName: `source-validator-report-${props.environment}`,
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
+      handler: 'dist/index.handler',
       code: lambda.Code.fromAsset('../backend/generateReport'),
       timeout: cdk.Duration.seconds(60),
       memorySize: 1024, // More memory for PDF generation
