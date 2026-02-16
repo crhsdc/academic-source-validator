@@ -1,0 +1,17 @@
+{
+  "name": "validate-function",
+  "version": "1.0.0",
+  "description": "Validate sources",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.400.0",
+    "@aws-sdk/lib-dynamodb": "^3.400.0",
+    "@aws-sdk/client-lambda": "^3.400.0",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
