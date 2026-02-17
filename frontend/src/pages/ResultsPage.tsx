@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -11,11 +11,24 @@ import {
   LinearProgress,
   Alert,
   Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import apiClient from '../services/api';
+import { API_ENDPOINTS } from '../config/api.config';
 
 interface Source {
   id: string;
@@ -47,11 +60,23 @@ interface LocationState {
   results: ValidationResult[];
 }
 
+interface AIAnalysis {
+  sourceId: string;
+  analysis: string;
+  suggestions: string[];
+  completeness: number;
+  aiConfidence: number;
+}
+
 export default function ResultsPage() {
   const { sessionId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as LocationState;
+
+  const [aiAnalyses, setAiAnalyses] = useState<AIAnalysis[]>([]);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   if (!state || !state.sources || !state.results) {
     return (
@@ -73,6 +98,22 @@ export default function ResultsPage() {
   }
 
   const { sources, results } = state;
+
+  const handleGetAISuggestions = async () => {
+    setLoadingAI(true);
+    setAiError(null);
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.ANALYZE, {
+        sources,
+      });
+      setAiAnalyses(response.data.analyses);
+    } catch (error: any) {
+      console.error('AI analysis error:', error);
+      setAiError('Failed to get AI suggestions. Please try again.');
+    } finally {
+      setLoadingAI(false);
+    }
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'success';
@@ -301,12 +342,101 @@ export default function ResultsPage() {
                         </ul>
                       </Alert>
                     )}
+
+                    {/* AI Analysis */}
+                    {aiAnalyses.length > 0 && (() => {
+                      const aiAnalysis = aiAnalyses.find((a) => a.sourceId === source.id);
+                      if (!aiAnalysis) return null;
+
+                      return (
+                        <Accordion sx={{ mt: 2 }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <AutoAwesomeIcon color="secondary" fontSize="small" />
+                              <Typography variant="subtitle2">
+                                AI Analysis & Suggestions
+                              </Typography>
+                              <Chip
+                                label={`${aiAnalysis.completeness}% Complete`}
+                                size="small"
+                                color={getScoreColor(aiAnalysis.completeness)}
+                                sx={{ ml: 1 }}
+                              />
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box>
+                              <Typography variant="body2" paragraph>
+                                {aiAnalysis.analysis}
+                              </Typography>
+
+                              <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+                                <LightbulbIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                                Improvement Suggestions:
+                              </Typography>
+                              <List dense>
+                                {aiAnalysis.suggestions.map((suggestion, idx) => (
+                                  <ListItem key={idx}>
+                                    <ListItemIcon sx={{ minWidth: 36 }}>
+                                      <Chip label={idx + 1} size="small" color="secondary" />
+                                    </ListItemIcon>
+                                    <ListItemText primary={suggestion} />
+                                  </ListItem>
+                                ))}
+                              </List>
+
+                              {aiAnalysis.aiConfidence > 0 && (
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                  AI Confidence: {aiAnalysis.aiConfidence}%
+                                </Typography>
+                              )}
+                            </Box>
+                          </AccordionDetails>
+                        </Accordion>
+                      );
+                    })()}
                   </Box>
                 </Box>
               </CardContent>
             </Card>
           );
         })}
+
+        {/* AI Analysis Section */}
+        {!aiAnalyses.length && !loadingAI && (
+          <Box sx={{ mt: 4, mb: 2 }}>
+            <Alert severity="info" icon={<AutoAwesomeIcon />}>
+              <Typography variant="body2">
+                Want AI-powered suggestions to improve your citations?
+              </Typography>
+            </Alert>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleGetAISuggestions}
+              sx={{ mt: 2 }}
+              fullWidth
+            >
+              Get AI Suggestions (Powered by Claude 3.5 Sonnet)
+            </Button>
+          </Box>
+        )}
+
+        {loadingAI && (
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <CircularProgress />
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              AI is analyzing your citations...
+            </Typography>
+          </Box>
+        )}
+
+        {aiError && (
+          <Alert severity="error" sx={{ mt: 4 }}>
+            {aiError}
+          </Alert>
+        )}
 
         {/* Action Buttons */}
         <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>

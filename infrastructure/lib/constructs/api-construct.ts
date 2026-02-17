@@ -102,6 +102,19 @@ export class ApiConstruct extends Construct {
       logRetention: logs.RetentionDays.ONE_WEEK,
     });
 
+    // 5. AI Analyze Function (AWS Bedrock)
+    const aiAnalyzeFunction = new lambda.Function(this, 'AIAnalyzeFunction', {
+      functionName: `source-validator-ai-analyze-${props.environment}`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'dist/index.handler',
+      code: lambda.Code.fromAsset('../backend/aiAnalyze'),
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+      environment: commonEnv,
+      tracing: lambda.Tracing.ACTIVE,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+    });
+
     // Grant permissions
     props.table.grantReadWriteData(parseFunction);
     props.table.grantReadWriteData(validateFunction);
@@ -113,6 +126,22 @@ export class ApiConstruct extends Construct {
 
     // Grant validate function permission to invoke check citation
     checkCitationFunction.grantInvoke(validateFunction);
+
+    // Grant AI Analyze function permission to invoke Bedrock
+    aiAnalyzeFunction.addToRolePolicy(
+      new cdk.aws_iam.PolicyStatement({
+        effect: cdk.aws_iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          // Cross-region inference profiles (recommended)
+          `arn:aws:bedrock:us-east-1:${cdk.Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-3-5-haiku-*`,
+          `arn:aws:bedrock:us-east-1:${cdk.Aws.ACCOUNT_ID}:inference-profile/us.anthropic.claude-3-5-sonnet-*`,
+          // Foundation models (fallback)
+          `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-*`,
+          `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-*`,
+        ],
+      })
+    );
 
     // API Gateway
     this.restApi = new apigateway.RestApi(this, 'Api', {
@@ -175,6 +204,15 @@ export class ApiConstruct extends Construct {
     reportIdResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(generateReportFunction, {
+        proxy: true,
+      })
+    );
+
+    // POST /analyze (AI-powered analysis)
+    const analyzeResource = this.restApi.root.addResource('analyze');
+    analyzeResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(aiAnalyzeFunction, {
         proxy: true,
       })
     );
